@@ -1,10 +1,10 @@
-from ota import OTAUpdater
+from machine import Pin, Timer
 
-SSID = 'GHOSH_SAP'
-PASSWORD = 'lifeline101'
+led = Pin("LED", Pin.OUT)
+tim = Timer()
 
-firmware_url = "https://github.com/liftronix/pi_pico_test"
+def tick(timer):
+    global led
+    led.toggle()
 
-ota_updater = OTAUpdater(SSID, PASSWORD, firmware_url, "main.py")
-
-ota_updater.download_and_install_update_if_available()
+tim.init(freq=2.5, mode=Timer.PERIODIC, callback=tick)
