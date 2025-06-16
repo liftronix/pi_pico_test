@@ -67,8 +67,8 @@ Main
 '''
 async def main():
     asyncio.create_task(check_and_schedule_ota_loop())
-    #led = LEDBlinker(pin_num='LED', interval_ms=300)
-    #led.start()
+    led = LEDBlinker(pin_num='LED', interval_ms=300)
+    led.start()
     while True:
         status = wifi.get_status()
         print(f"WiFi Status: {status['WiFi']}, Internet Status: {status['Internet']}")
