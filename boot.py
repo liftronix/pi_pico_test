@@ -1,9 +1,14 @@
-import os
-import network
-import time
-import uasyncio as asyncio
+from machine import Pin
+import time, os
+import network, uasyncio, logger
 from ota import OTAUpdater
-import logger
+
+led = Pin('LED', Pin.OUT)
+led.value(1)
+time.sleep(0.5)
+led.value(0)
+time.sleep(0.5)
+logger.info("Boot sequence started")
 
 def connect_wifi(ssid="GHOSH_SAP", password="lifeline101"):
     wlan = network.WLAN(network.STA_IF)
@@ -18,31 +23,38 @@ def connect_wifi(ssid="GHOSH_SAP", password="lifeline101"):
 
 async def show_progress(ota):
     while ota.get_progress() < 100:
-        print(f"\rOTA Progress: {ota.get_progress():>3}% - {ota.get_status()}", end="")
-        await asyncio.sleep(0.5)
-    print()
+        status = f"OTA {ota.get_progress():>3}% - {ota.get_status()}"
+        logger.info(status)
+        await uasyncio.sleep(0.5)
+    logger.info("OTA progress complete")
 
 async def run_ota():
+    logger.info("Running OTA")
     ota = OTAUpdater("https://raw.githubusercontent.com/liftronix/pi_pico_test/refs/heads/main")
-    print("📦 Downloading update...")
     if await ota.download_update():
-        print("\n✅ Verifying and applying update...")
+        logger.info("Download complete")
         if await ota.apply_update():
-            print("🔁 Update applied. Rebooting.")
+            logger.info("Update successful. Rebooting.")
             import machine
             machine.reset()
         else:
-            print("⚠️ Apply failed. Rolling back.")
+            logger.warn("Apply failed. Attempting rollback.")
             await ota.rollback()
     else:
-        print("❌ Download failed.")
+        logger.error("OTA download failed")
 
 if "ota_pending.flag" in os.listdir("/"):
-    print("🔁 OTA pending — connecting Wi-Fi...")
+    logger.info("OTA flag found")
     if connect_wifi():
-        print("📡 Wi-Fi connected. Starting OTA...")
-        ota = OTAUpdater("https://raw.githubusercontent.com/yourusername/yourrepo/main")
-        asyncio.run(asyncio.gather(run_ota(), show_progress(ota)))
+        logger.info("Wi-Fi connected")
+        ota = OTAUpdater("https://raw.githubusercontent.com/liftronix/pi_pico_test/refs/heads/main")
+        uasyncio.run(uasyncio.gather(run_ota(), show_progress(ota)))
     else:
-        print("❌ Wi-Fi failed. Skipping OTA.")
-    os.remove("ota_pending.flag")
+        logger.error("Wi-Fi failed. OTA skipped.")
+    try:
+        os.remove("ota_pending.flag")
+        logger.info("OTA flag cleared")
+    except:
+        logger.warn("Failed to remove ota_pending.flag")
+else:
+    logger.info("No OTA pending")

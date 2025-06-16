@@ -1,10 +1,10 @@
 {
-  "version": "0.0.13",
+  "version": "0.0.14",
   "files": {
-    "boot.py": "90ae49c97e4794145803867ad0f1d165496fd0618d1021ecacad06c6fccc231b",
-    "main.py": "8bda4c715e40be9e6ff104140ce45956916987dd39c14feb665551afcb557e70",
+    "boot.py": "f3d511941b259e6941a3d37c4e25f5c896ce8046b17b46e1d9b74e2754a3ffdc",
+    "main.py": "b5aa9197e31213863e8ea85ca91397da84a63eb9e8242fd95e348c105f4591b7",
     "lib/ledblinker.py": "fdc8d22b78e769d9fc6bbd38137ea4dfaceaf7b359126ca30306a358720a2ae4",
-    "lib/logger.py": "d12d84f940d985aa56377b8b2929cbba4fab762a616fa15c60fd7a251ef2e9fa",
+    "lib/logger.py": "23dba8a8c54a48161886f6631e199b0232c864bb0ae7362829fa122febd40e95",
     "lib/ota.py": "72c08b4b39517e2d93c09f6dee36d850c17b7784a03b178ea4e4729bdb9c257e",
     "lib/wifi_manager.py": "6e70bd8bd82622933a7da65b2b42d2a42c52a4b1a8f6d6a4b9a9fc695473ca92"
   }
