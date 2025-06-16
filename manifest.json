@@ -1,9 +1,9 @@
 {
-  "version": "0.0.10",
+  "version": "0.0.12",
   "files": {
     "boot.py": "90ae49c97e4794145803867ad0f1d165496fd0618d1021ecacad06c6fccc231b",
     "main.py": "e8462c4263e82c7dc7f4ac6decefbed2d713650286fbea3122c643b4465846f9",
-    "lib/logger.py": "ddfbcceddf4e4bcd2a4e20d14386dc471039fb715e5fb12d0fac5af073cab1a5",
+    "lib/logger.py": "d12d84f940d985aa56377b8b2929cbba4fab762a616fa15c60fd7a251ef2e9fa",
     "lib/ota.py": "72c08b4b39517e2d93c09f6dee36d850c17b7784a03b178ea4e4729bdb9c257e",
     "lib/wifi_manager.py": "6e70bd8bd82622933a7da65b2b42d2a42c52a4b1a8f6d6a4b9a9fc695473ca92"
   }

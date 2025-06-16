@@ -1,30 +1,48 @@
+# logger.py
+
 class Logger:
-    """ Custom logger to enable/disable debug logs dynamically """
-    DEBUG_MODE = True  # Set to False for production
-    INFO_MODE = True  # Set to False for production
-    WARN_MODE = True  # Set to False for production
-    ERROR_MODE = True  # Set to False for production
+    """
+    Flexible, colorful logger for MicroPython.
+    Enables runtime control of log levels for development and production.
+    """
+
+    DEBUG_MODE = True
+    INFO_MODE = True
+    WARN_MODE = True
+    ERROR_MODE = True
+
+    # ANSI color codes
+    _RESET = "\033[0m"
+    _COLORS = {
+        "DEBUG": "\033[90m",   # Gray
+        "INFO":  "\033[94m",   # Blue
+        "WARN":  "\033[93m",   # Yellow
+        "ERROR": "\033[91m",   # Red
+    }
 
     @staticmethod
     def debug(message):
-        """ Print debug messages if debugging is enabled """
         if Logger.DEBUG_MODE:
-            print(f"[DEBUG] {message}")
+            print(f"{Logger._COLORS['DEBUG']}[DEBUG] {message}{Logger._RESET}")
 
     @staticmethod
     def info(message):
-        """ Print informational messages """
         if Logger.INFO_MODE:
-            print(f"[INFO] {message}")
+            print(f"{Logger._COLORS['INFO']}[INFO] {message}{Logger._RESET}")
 
     @staticmethod
     def warn(message):
-        """ Print warning messages """
         if Logger.WARN_MODE:
-            print(f"[WARNING] {message}")
+            print(f"{Logger._COLORS['WARN']}[WARNING] {message}{Logger._RESET}")
 
     @staticmethod
     def error(message):
-        """ Print error messages """
         if Logger.ERROR_MODE:
-            print(f"[ERROR] {message}")
+            print(f"{Logger._COLORS['ERROR']}[ERROR] {message}{Logger._RESET}")
+
+
+# Export top-level convenience functions
+debug = Logger.debug
+info = Logger.info
+warn = Logger.warn
+error = Logger.error
