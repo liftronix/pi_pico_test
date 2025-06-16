@@ -1,56 +1,94 @@
-from machine import Pin
-import time, os
-import network, uasyncio, logger
+import os
+import time
+import network
+import uasyncio as asyncio
+from machine import Pin, reset
 from ota import OTAUpdater
+import logger
 
+# LED setup
 led = Pin('LED', Pin.OUT)
-led.value(1)
-time.sleep(0.5)
-led.value(0)
-time.sleep(0.5)
-logger.info("Boot sequence started")
 
-def connect_wifi(ssid="GHOSH_SAP", password="lifeline101"):
+def blink_led(times=3, delay=200):
+    for _ in range(times):
+        led.toggle()
+        time.sleep_ms(delay)
+        led.toggle()
+        time.sleep_ms(delay)
+
+def connect_wifi(ssid="GHOSH_SAP", password="lifeline101", retries=2):
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
-    if not wlan.isconnected():
+    logger.debug("WLAN activated")
+
+    for attempt in range(retries):
+        if wlan.isconnected():
+            logger.info("Wi-Fi already connected")
+            break
+
+        logger.info(f"Connecting to SSID: {ssid} (attempt {attempt+1})")
         wlan.connect(ssid, password)
-        for _ in range(20):
+
+        for i in range(20):
             if wlan.isconnected():
-                break
+                logger.info(f"Wi-Fi connected in {i*0.5:.1f}s")
+                led.value(1)  # Solid ON for success
+                return True
+            blink_led(1, 100)
+            logger.debug(f"Waiting for Wi-Fi... {i}")
             time.sleep(0.5)
-    return wlan.isconnected()
+
+        logger.warn("Wi-Fi attempt failed. Retrying...")
+
+        # Reset interface before retry
+        wlan.disconnect()
+        wlan.active(False)
+        time.sleep(1)
+        wlan.active(True)
+
+    led.value(0)  # OFF on failure
+    logger.error("Wi-Fi connection failed after retries")
+    return False
 
 async def show_progress(ota):
     while ota.get_progress() < 100:
-        status = f"OTA {ota.get_progress():>3}% - {ota.get_status()}"
-        logger.info(status)
-        await uasyncio.sleep(0.5)
+        msg = f"OTA {ota.get_progress():>3}% - {ota.get_status()}"
+        logger.info(msg)
+        await asyncio.sleep(0.5)
     logger.info("OTA progress complete")
 
 async def run_ota():
-    logger.info("Running OTA")
+    logger.info("Starting OTA process")
     ota = OTAUpdater("https://raw.githubusercontent.com/liftronix/pi_pico_test/refs/heads/main")
     if await ota.download_update():
         logger.info("Download complete")
         if await ota.apply_update():
-            logger.info("Update successful. Rebooting.")
-            import machine
-            machine.reset()
+            logger.info("Update applied. Rebooting.")
+            reset()
         else:
             logger.warn("Apply failed. Attempting rollback.")
             await ota.rollback()
     else:
         logger.error("OTA download failed")
 
+def disconnect_wifi():
+    wlan = network.WLAN(network.STA_IF)
+    if wlan.isconnected():
+        logger.info("Disconnecting Wi-Fi before exiting boot")
+        wlan.disconnect()
+    wlan.active(False)
+
+# Boot sequence
+logger.info("Boot.py started")
+
 if "ota_pending.flag" in os.listdir("/"):
-    logger.info("OTA flag found")
+    logger.info("OTA flag detected")
     if connect_wifi():
-        logger.info("Wi-Fi connected")
+        logger.info("Wi-Fi connected. Running OTA...")
         ota = OTAUpdater("https://raw.githubusercontent.com/liftronix/pi_pico_test/refs/heads/main")
-        uasyncio.run(uasyncio.gather(run_ota(), show_progress(ota)))
+        asyncio.run(asyncio.gather(run_ota(), show_progress(ota)))
     else:
-        logger.error("Wi-Fi failed. OTA skipped.")
+        logger.error("Wi-Fi failed. Skipping OTA.")
     try:
         os.remove("ota_pending.flag")
         logger.info("OTA flag cleared")
@@ -58,3 +96,7 @@ if "ota_pending.flag" in os.listdir("/"):
         logger.warn("Failed to remove ota_pending.flag")
 else:
     logger.info("No OTA pending")
+
+disconnect_wifi()
+led.value(0)  # Turn off LED before handing over to main
+logger.info("Boot.py complete — handing off to main.py")
