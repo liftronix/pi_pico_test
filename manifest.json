@@ -1,8 +1,8 @@
 {
-  "version": "0.0.15",
+  "version": "0.0.16",
   "files": {
-    "boot.py": "f3d511941b259e6941a3d37c4e25f5c896ce8046b17b46e1d9b74e2754a3ffdc",
-    "main.py": "8bda4c715e40be9e6ff104140ce45956916987dd39c14feb665551afcb557e70",
+    "boot.py": "4086744c8cf26ebbca44c2982aa4b111c1288259d9d197426ed3fa007eaeed3b",
+    "main.py": "3a75ab70e78e2413d539d2ae98d61ce2df628f8067f0cdd64b6bbcc87c789a8e",
     "lib/ledblinker.py": "fdc8d22b78e769d9fc6bbd38137ea4dfaceaf7b359126ca30306a358720a2ae4",
     "lib/logger.py": "23dba8a8c54a48161886f6631e199b0232c864bb0ae7362829fa122febd40e95",
     "lib/ota.py": "72c08b4b39517e2d93c09f6dee36d850c17b7784a03b178ea4e4729bdb9c257e",
