@@ -98,7 +98,6 @@ class OTAUpdater:
                 logger.error(f"Download failed: {file}: {e}")
                 return False
 
-        # Save manifest for reboot-safe apply
         try:
             with open(f"{self.ota_dir}/manifest.json", "w") as f:
                 json.dump(self.manifest, f)
@@ -116,7 +115,7 @@ class OTAUpdater:
             self.hashes = self.manifest.get("files", {})
             self.files = list(self.hashes.keys())
             if not self.remote_version:
-                logger.error("OTA: Manifest missing version field")
+                logger.error(f"OTA: Manifest missing version field → {self.manifest}")
                 return False
         except Exception as e:
             logger.error(f"OTA: Failed to load manifest during apply: {e}")
@@ -149,10 +148,6 @@ class OTAUpdater:
                 logger.error(f"Failed to apply {f}: {e}")
                 await self.rollback()
                 return False
-
-        if not self.remote_version:
-            logger.error("OTA: Cannot write version file — remote_version is empty")
-            return False
 
         try:
             with open(self.version_file, "w") as f:
