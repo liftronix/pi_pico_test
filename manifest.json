@@ -1,8 +1,8 @@
 {
-  "version": "0.0.19",
+  "version": "0.0.20",
   "files": {
     "boot.py": "4086744c8cf26ebbca44c2982aa4b111c1288259d9d197426ed3fa007eaeed3b",
-    "main.py": "3fa3723ff97235bc990a9373fa0a86d3bafa5be6cdac546a7cce4cc7e78f5327",
+    "main.py": "42b5cf84046ef3e40dc93cae0416ba1a569de7836b285945d9a357c4104d8a4e",
     "lib/ledblinker.py": "fdc8d22b78e769d9fc6bbd38137ea4dfaceaf7b359126ca30306a358720a2ae4",
     "lib/logger.py": "23dba8a8c54a48161886f6631e199b0232c864bb0ae7362829fa122febd40e95",
     "lib/ota.py": "91dc2957083af98aa64301318d19690a258e586ceab657639950ef1a08c0b069",
