@@ -73,6 +73,7 @@ class OTAUpdater:
             logger.info(f"Created OTA directory: {self.ota_dir}")
         except:
             logger.debug(f"OTA directory already exists: {self.ota_dir}")
+
         total = len(self.files)
         for i, file in enumerate(self.files):
             url = f"{self.repo_url}/{file}"
@@ -96,15 +97,24 @@ class OTAUpdater:
             except Exception as e:
                 logger.error(f"Download failed: {file}: {e}")
                 return False
+
+        # Save manifest for reboot-safe apply
+        try:
+            with open(f"{self.ota_dir}/manifest.json", "w") as f:
+                json.dump(self.manifest, f)
+            logger.debug("Saved manifest.json to OTA directory")
+        except Exception as e:
+            logger.warn(f"Failed to save manifest.json: {e}")
+
         return True
 
     async def apply_update(self):
         try:
-            # Reload manifest if needed
-            if not self.manifest:
-                with open(f"{self.ota_dir}/manifest.json") as f:
-                    self.manifest = json.load(f)
+            with open(f"{self.ota_dir}/manifest.json") as f:
+                self.manifest = json.load(f)
             self.remote_version = self.manifest.get("version", "")
+            self.hashes = self.manifest.get("files", {})
+            self.files = list(self.hashes.keys())
             if not self.remote_version:
                 logger.error("OTA: Manifest missing version field")
                 return False
@@ -140,6 +150,10 @@ class OTAUpdater:
                 await self.rollback()
                 return False
 
+        if not self.remote_version:
+            logger.error("OTA: Cannot write version file — remote_version is empty")
+            return False
+
         try:
             with open(self.version_file, "w") as f:
                 f.write(self.remote_version)
@@ -163,10 +177,11 @@ class OTAUpdater:
 
     async def cleanup(self):
         try:
-            for root, dirs, files in os.ilistdir(self.ota_dir):
-                for f in files:
-                    os.remove(f"{self.ota_dir}/{f}")
+            for f in os.listdir(self.ota_dir):
+                full_path = f"{self.ota_dir}/{f}"
+                if os.path.isfile(full_path):
+                    os.remove(full_path)
             os.rmdir(self.ota_dir)
             logger.info("Cleaned up OTA directory")
-        except:
-            logger.warn("Failed to clean up OTA directory")
+        except Exception as e:
+            logger.warn(f"Failed to clean up OTA directory: {e}")
