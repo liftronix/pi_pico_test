@@ -27,7 +27,7 @@ class OTAUpdater:
 
     async def _get_local_version(self):
         try:
-            with open(self.version_file) as f:
+            with open(self.version_file, "r") as f:
                 return f.read().strip()
         except:
             return "0.0.0"
@@ -49,10 +49,9 @@ class OTAUpdater:
             self.remote_version = self.manifest["version"]
             self.hashes = self.manifest["files"]
             self.files = list(self.hashes.keys())
-            remote = self.remote_version
             local = await self._get_local_version()
-            logger.info(f"OTA → Local: {local} | Remote: {remote}")
-            return remote != local
+            logger.info(f"OTA → Local: {local} | Remote: {self.remote_version}")
+            return self.remote_version != local
         except Exception as e:
             logger.error(f"OTA: Failed to fetch manifest: {e}")
             return False
@@ -60,7 +59,10 @@ class OTAUpdater:
     def _sha256(self, path):
         h = hashlib.sha256()
         with open(path, "rb") as f:
-            while chunk := f.read(1024):
+            while True:
+                chunk = f.read(1024)
+                if not chunk:
+                    break
                 h.update(chunk)
         return h.hexdigest()
 
@@ -77,8 +79,8 @@ class OTAUpdater:
             self.current_file = file
             try:
                 r = requests.get(url)
-                with open(dest, "w") as f:
-                    f.write(r.text)
+                with open(dest, "wb") as f:
+                    f.write(r.content)
                 actual_hash = self._sha256(dest)
                 expected_hash = self.hashes[file]
                 if actual_hash != expected_hash:
@@ -102,14 +104,14 @@ class OTAUpdater:
             new = f"{self.ota_dir}/{f}"
             await self._ensure_dirs(bkp)
             try:
-                if f in os.listdir("/" + "/".join(f.split("/")[:-1])):
-                    with open(src) as r, open(bkp, "w") as w:
+                if os.path.exists(src):
+                    with open(src, "rb") as r, open(bkp, "wb") as w:
                         w.write(r.read())
             except:
                 pass
             try:
                 await self._ensure_dirs(src)
-                with open(new) as r, open(src, "w") as w:
+                with open(new, "rb") as r, open(src, "wb") as w:
                     w.write(r.read())
                 logger.info(f"Applied: {f}")
             except Exception as e:
@@ -120,6 +122,7 @@ class OTAUpdater:
         try:
             with open(self.version_file, "w") as f:
                 f.write(self.remote_version)
+            logger.info(f"Version updated to {self.remote_version}")
         except Exception as e:
             logger.warn(f"Failed to write version file: {e}")
 
@@ -131,7 +134,7 @@ class OTAUpdater:
             bkp = f"{self.backup_dir}/{f}"
             dst = f"/{f}"
             try:
-                with open(bkp) as r, open(dst, "w") as w:
+                with open(bkp, "rb") as r, open(dst, "wb") as w:
                     w.write(r.read())
                 logger.info(f"Rollback: {f}")
             except Exception as e:
@@ -139,8 +142,9 @@ class OTAUpdater:
 
     async def cleanup(self):
         try:
-            for f in os.listdir(self.ota_dir):
-                os.remove(f"{self.ota_dir}/{f}")
+            for root, dirs, files in os.ilistdir(self.ota_dir):
+                for f in files:
+                    os.remove(f"{self.ota_dir}/{f}")
             os.rmdir(self.ota_dir)
         except:
             pass
