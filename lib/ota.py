@@ -34,6 +34,7 @@ class OTAUpdater:
             return "0.0.0"
 
     async def _ensure_dirs(self, path):
+        # Create all parent directories for a given file path
         parts = path.split("/")[:-1]
         current = ""
         for p in parts:
@@ -43,6 +44,21 @@ class OTAUpdater:
                 logger.debug(f"Created directory: {current}")
             except:
                 pass
+
+    def _should_normalize(self, file_path):
+        # Only normalize line endings for known text-based files
+        return file_path.endswith((".py", ".txt", ".json", ".md"))
+
+    def _sha256(self, path):
+        # Compute SHA-256 hash (MicroPython-compatible)
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            while True:
+                chunk = f.read(1024)
+                if not chunk:
+                    break
+                h.update(chunk)
+        return binascii.hexlify(h.digest()).decode()
 
     async def check_for_update(self):
         try:
@@ -57,16 +73,6 @@ class OTAUpdater:
         except Exception as e:
             logger.error(f"OTA: Failed to fetch manifest: {e}")
             return False
-
-    def _sha256(self, path):
-        h = hashlib.sha256()
-        with open(path, "rb") as f:
-            while True:
-                chunk = f.read(1024)
-                if not chunk:
-                    break
-                h.update(chunk)
-        return binascii.hexlify(h.digest()).decode()
 
     async def download_update(self):
         try:
@@ -84,15 +90,26 @@ class OTAUpdater:
             try:
                 logger.info(f"Downloading: {file} → {url}")
                 r = requests.get(url)
+                content = r.content
+
+                # Normalize line endings only for safe text files
+                if self._should_normalize(file):
+                    content = content.replace(b"\r\n", b"\n")
+
                 with open(dest, "wb") as f:
-                    f.write(r.content)
-                size = len(r.content)
+                    f.write(content)
+
                 actual_hash = self._sha256(dest)
                 expected_hash = self.hashes[file]
+
+                logger.debug(f"{file} → AHASH: {actual_hash}")
+                logger.debug(f"{file} → EHASH: {expected_hash}")
+
                 if actual_hash != expected_hash:
                     logger.error(f"Hash mismatch: {file}")
                     return False
-                logger.info(f"Downloaded {file} ({size} bytes) ✓")
+
+                logger.info(f"Downloaded {file} ✓")
                 self.progress = int(((i + 1) / total) * 100)
                 await asyncio.sleep_ms(10)
             except Exception as e:
