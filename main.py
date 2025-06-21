@@ -133,7 +133,7 @@ async def main():
     asyncio.create_task(monitor())
     asyncio.create_task(schedule_ota_loop())
 
-    led_blinker = LEDBlinker(pin_num='LED', interval_ms=500)
+    led_blinker = LEDBlinker(pin_num='LED', interval_ms=100)
     led_blinker.start()
 
     while True:
