@@ -179,4 +179,9 @@ class OTAUpdater:
         try:
             for f in os.listdir(self.ota_dir):
                 full_path = f"{self.ota_dir}/{f}"
-                if os.path.isfile
+                if os.path.isfile(full_path):
+                    os.remove(full_path)
+            os.rmdir(self.ota_dir)
+            logger.info("Cleaned up OTA directory")
+        except Exception as e:
+            logger.warn(f"Failed to clean up OTA directory: {e}")
