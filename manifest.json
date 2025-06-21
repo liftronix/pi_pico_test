@@ -1,7 +1,7 @@
 {
-  "version": "0.0.27",
+  "version": "0.0.30",
   "files": {
-    "main.py": "7b87dd8ce997cc44093d97d3abb8873ca9440af7c41b9158a43d9c6314e54af1",
+    "main.py": "80a37eaece3ce5f51a3155f458f5df950ec8d6d4da9ef2898096d1a8570aca8b",
     "lib/ledblinker.py": "fdc8d22b78e769d9fc6bbd38137ea4dfaceaf7b359126ca30306a358720a2ae4",
     "lib/logger.py": "23dba8a8c54a48161886f6631e199b0232c864bb0ae7362829fa122febd40e95",
     "lib/ota.py": "f55b99bf69c4d6962a1fb2e61ad357fee7bf67a5bb129ce31f38e18e2cd9098f",

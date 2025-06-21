@@ -9,6 +9,10 @@ from ota import OTAUpdater
 from ledblinker import LEDBlinker
 from wifi_manager import WiFiManager
 
+# --- Config ---
+REPO_URL = "https://raw.githubusercontent.com/liftronix/pi_pico_test/refs/heads/main"
+MIN_FREE_MEM = 100 * 1024
+
 # --- Boot Delay for REPL Access ---
 print("⏳ Boot delay... press Stop in Thonny to break into REPL")
 time.sleep(3)
@@ -53,8 +57,6 @@ async def monitor():
         print(f"Utilization: {(1808 - idle_ticks) / 1808 * 100:.2f} %")
 
 # --- OTA Logic ---
-MIN_FREE_MEM = 100 * 1024
-
 def has_enough_memory():
     gc.collect()
     free = gc.mem_free()
@@ -75,49 +77,40 @@ async def show_progress(ota):
         await asyncio.sleep(0.4)
     led.value(1)
 
-async def run_ota():
-    logger.info("💾 Starting OTA update process")
-    ota = OTAUpdater("https://raw.githubusercontent.com/liftronix/pi_pico_test/refs/heads/main")
-    if await ota.download_update():
-        logger.info("✅ OTA download complete")
+async def apply_ota_if_pending():
+    if "ota_pending.flag" in os.listdir("/"):
+        logger.info("🟡 OTA flag detected — applying update")
+        ota = OTAUpdater(REPO_URL)
         if await ota.apply_update():
             logger.info("🚀 OTA applied successfully. Rebooting...")
-            reset()
+            machine.reset()
         else:
             logger.error("⚠️ OTA apply failed. Rolling back.")
             await ota.rollback()
-    else:
-        logger.error("❌ OTA download failed")
-
-async def check_and_run_ota():
-    if "ota_pending.flag" in os.listdir("/"):
-        logger.info("🟡 OTA flag detected")
-        logger.debug(f"Root dir contents: {os.listdir('/')}")
-        if has_enough_memory():
-            await asyncio.gather(run_ota(), show_progress(OTAUpdater("https://raw.githubusercontent.com/liftronix/pi_pico_test/refs/heads/main")))
-        else:
-            logger.warn("🚫 Not enough memory for OTA")
         try:
             os.remove("ota_pending.flag")
             logger.info("🗑 ota_pending.flag removed")
         except:
             logger.warn("Could not remove ota_pending.flag")
 
-async def schedule_ota_loop():
-    updater = OTAUpdater("https://raw.githubusercontent.com/liftronix/pi_pico_test/refs/heads/main")
+async def check_and_download_ota():
+    updater = OTAUpdater(REPO_URL)
     while True:
         logger.info("🔍 Checking for OTA update...")
         if await updater.check_for_update():
             logger.info("🆕 Update available.")
             if has_enough_memory():
-                if "ota_pending.flag" not in os.listdir("/"):
-                    logger.info("✅ Scheduling OTA...")
+                logger.info("📥 Downloading update before reboot...")
+                if await updater.download_update():
+                    logger.info("✅ Update downloaded. Preparing to reboot...")
                     with open("/ota_pending.flag", "w") as f:
-                        f.write("scheduled update")
-                    await asyncio.sleep(1)
-                    reset()
+                        f.write("ready")
+                    for i in range(10, 0, -1):
+                        print(f"Rebooting in {i} seconds... Press Ctrl+C to cancel.")
+                        await asyncio.sleep(1)
+                    machine.reset()
                 else:
-                    logger.warn("⚠️ OTA already scheduled. Skipping reflag.")
+                    logger.error("❌ Download failed. OTA aborted.")
             else:
                 logger.warn("🚫 Not enough memory for OTA.")
         else:
@@ -127,13 +120,13 @@ async def schedule_ota_loop():
 # --- Main Entry Point ---
 async def main():
     logger.info(f"🧾 Running firmware version: {get_local_version()}")
-    await check_and_run_ota()
+    await apply_ota_if_pending()
 
     asyncio.create_task(idle_task())
     asyncio.create_task(monitor())
-    asyncio.create_task(schedule_ota_loop())
+    asyncio.create_task(check_and_download_ota())
 
-    led_blinker = LEDBlinker(pin_num='LED', interval_ms=1000)
+    led_blinker = LEDBlinker(pin_num='LED', interval_ms=2000)
     led_blinker.start()
 
     while True:
