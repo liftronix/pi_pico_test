@@ -3,6 +3,7 @@ import urequests as requests
 import os
 import json
 import hashlib
+import binascii
 import logger
 
 class OTAUpdater:
@@ -65,7 +66,7 @@ class OTAUpdater:
                 if not chunk:
                     break
                 h.update(chunk)
-        return h.hexdigest()
+        return binascii.hexlify(h.digest()).decode()
 
     async def download_update(self):
         try:
@@ -100,10 +101,14 @@ class OTAUpdater:
 
         try:
             with open(f"{self.ota_dir}/manifest.json", "w") as f:
-                json.dump(self.manifest, f)
+                json.dump({
+                    "version": self.remote_version,
+                    "files": self.hashes
+                }, f)
             logger.debug("Saved manifest.json to OTA directory")
         except Exception as e:
-            logger.warn(f"Failed to save manifest.json: {e}")
+            logger.error(f"Failed to save manifest.json: {e}")
+            return False
 
         return True
 
@@ -174,9 +179,4 @@ class OTAUpdater:
         try:
             for f in os.listdir(self.ota_dir):
                 full_path = f"{self.ota_dir}/{f}"
-                if os.path.isfile(full_path):
-                    os.remove(full_path)
-            os.rmdir(self.ota_dir)
-            logger.info("Cleaned up OTA directory")
-        except Exception as e:
-            logger.warn(f"Failed to clean up OTA directory: {e}")
+                if os.path.isfile
