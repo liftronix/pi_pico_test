@@ -39,6 +39,7 @@ class OTAUpdater:
             current = f"{current}/{p}" if current else f"/{p}"
             try:
                 os.mkdir(current)
+                logger.debug(f"Created directory: {current}")
             except:
                 pass
 
@@ -46,12 +47,12 @@ class OTAUpdater:
         try:
             r = requests.get(self.manifest_url)
             self.manifest = r.json()
-            self.remote_version = self.manifest["version"]
-            self.hashes = self.manifest["files"]
+            self.remote_version = self.manifest.get("version", "")
+            self.hashes = self.manifest.get("files", {})
             self.files = list(self.hashes.keys())
             local = await self._get_local_version()
             logger.info(f"OTA → Local: {local} | Remote: {self.remote_version}")
-            return self.remote_version != local
+            return self.remote_version and self.remote_version != local
         except Exception as e:
             logger.error(f"OTA: Failed to fetch manifest: {e}")
             return False
@@ -69,8 +70,9 @@ class OTAUpdater:
     async def download_update(self):
         try:
             os.mkdir(self.ota_dir)
+            logger.info(f"Created OTA directory: {self.ota_dir}")
         except:
-            pass
+            logger.debug(f"OTA directory already exists: {self.ota_dir}")
         total = len(self.files)
         for i, file in enumerate(self.files):
             url = f"{self.repo_url}/{file}"
@@ -78,14 +80,17 @@ class OTAUpdater:
             await self._ensure_dirs(dest)
             self.current_file = file
             try:
+                logger.info(f"Downloading: {file} → {url}")
                 r = requests.get(url)
                 with open(dest, "wb") as f:
                     f.write(r.content)
+                size = len(r.content)
                 actual_hash = self._sha256(dest)
                 expected_hash = self.hashes[file]
                 if actual_hash != expected_hash:
                     logger.error(f"Hash mismatch: {file}")
                     return False
+                logger.info(f"Downloaded {file} ({size} bytes) ✓")
                 self.progress = int(((i + 1) / total) * 100)
                 await asyncio.sleep_ms(10)
             except Exception as e:
@@ -95,9 +100,24 @@ class OTAUpdater:
 
     async def apply_update(self):
         try:
+            # Reload manifest if needed
+            if not self.manifest:
+                with open(f"{self.ota_dir}/manifest.json") as f:
+                    self.manifest = json.load(f)
+            self.remote_version = self.manifest.get("version", "")
+            if not self.remote_version:
+                logger.error("OTA: Manifest missing version field")
+                return False
+        except Exception as e:
+            logger.error(f"OTA: Failed to load manifest during apply: {e}")
+            return False
+
+        try:
             os.mkdir(self.backup_dir)
+            logger.info(f"Created backup directory: {self.backup_dir}")
         except:
-            pass
+            logger.debug(f"Backup directory already exists: {self.backup_dir}")
+
         for f in self.files:
             src = f"/{f}"
             bkp = f"{self.backup_dir}/{f}"
@@ -107,8 +127,9 @@ class OTAUpdater:
                 if os.path.exists(src):
                     with open(src, "rb") as r, open(bkp, "wb") as w:
                         w.write(r.read())
+                    logger.debug(f"Backed up: {f}")
             except:
-                pass
+                logger.warn(f"Could not backup: {f}")
             try:
                 await self._ensure_dirs(src)
                 with open(new, "rb") as r, open(src, "wb") as w:
@@ -146,5 +167,6 @@ class OTAUpdater:
                 for f in files:
                     os.remove(f"{self.ota_dir}/{f}")
             os.rmdir(self.ota_dir)
+            logger.info("Cleaned up OTA directory")
         except:
-            pass
+            logger.warn("Failed to clean up OTA directory")

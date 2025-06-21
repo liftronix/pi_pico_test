@@ -6,11 +6,11 @@ from machine import Pin, reset
 from ota import OTAUpdater
 import logger
 
-# --- Boot Delay (so you can interrupt with Thonny Stop) ---
+# --- Boot Delay for REPL Access ---
 print("⏳ Boot delay... press Stop in Thonny to break into REPL")
 time.sleep(3)
 
-# --- Safe Mode via GPIO (jumper GPIO14 to GND to skip boot) ---
+# --- Safe Mode via GPIO14 ---
 safe_pin = Pin(14, Pin.IN, Pin.PULL_UP)
 if not safe_pin.value():
     logger.warn("🛑 Safe Mode triggered via GPIO14 — skipping OTA and main.py")
@@ -31,7 +31,6 @@ def blink_led(times=3, delay=150):
 # --- Wi-Fi Connect Logic ---
 def connect_wifi(ssid="GHOSH_SAP", password="lifeline101", retries=2):
     logger.info("Preparing WLAN connection")
-
     wlan = network.WLAN(network.STA_IF)
 
     try:
@@ -104,8 +103,9 @@ def disconnect_wifi():
     wlan.active(False)
     led.value(0)
 
-# --- OTA Flow Trigger ---
+# --- Boot Sequence ---
 logger.info("🔧 boot.py starting")
+logger.debug(f"Root dir contents: {os.listdir('/')}")
 
 if "ota_pending.flag" in os.listdir("/"):
     logger.info("🟡 OTA flag detected")
