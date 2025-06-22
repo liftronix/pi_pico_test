@@ -93,6 +93,7 @@ class OTAUpdater:
                 content = r.content
                 if self._should_normalize(file):
                     content = content.replace(b"\r\n", b"\n")
+                    logger.debug(f"Normalized line endings for {file}")
                 with open(dest, "wb") as f:
                     f.write(content)
                 actual_hash = self._sha256(dest)
