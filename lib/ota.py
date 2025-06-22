@@ -16,6 +16,7 @@ class OTAUpdater:
         self.manifest = {}
         self.files = []
         self.hashes = {}
+        self.sizes = {}  # parsed file sizes from manifest
         self.remote_version = ""
         self.progress = 0
         self.current_file = ""
@@ -63,7 +64,9 @@ class OTAUpdater:
             r = requests.get(self.manifest_url)
             self.manifest = r.json()
             self.remote_version = self.manifest.get("version", "")
-            self.hashes = self.manifest.get("files", {})
+            files_meta = self.manifest.get("files", {})
+            self.hashes = {k: v["sha256"] for k, v in files_meta.items()}
+            self.sizes = {k: v["size"] for k, v in files_meta.items()}
             self.files = list(self.hashes.keys())
             local = await self._get_local_version()
             logger.info(f"OTA → Local: {local} | Remote: {self.remote_version}")
@@ -107,10 +110,7 @@ class OTAUpdater:
 
         try:
             with open(f"{self.ota_dir}/manifest.json", "w") as f:
-                json.dump({
-                    "version": self.remote_version,
-                    "files": self.hashes
-                }, f)
+                json.dump(self.manifest, f)
             logger.debug("Saved manifest.json to OTA directory")
         except Exception as e:
             logger.error(f"Failed to save manifest.json: {e}")
@@ -123,7 +123,9 @@ class OTAUpdater:
             with open(f"{self.ota_dir}/manifest.json") as f:
                 self.manifest = json.load(f)
             self.remote_version = self.manifest.get("version", "")
-            self.hashes = self.manifest.get("files", {})
+            files_meta = self.manifest.get("files", {})
+            self.hashes = {k: v["sha256"] for k, v in files_meta.items()}
+            self.sizes = {k: v["size"] for k, v in files_meta.items()}
             self.files = list(self.hashes.keys())
             if not self.remote_version:
                 logger.error(f"OTA: Manifest missing version field → {self.manifest}")
@@ -210,3 +212,10 @@ class OTAUpdater:
             logger.info("Cleaned up OTA directory")
         except Exception as e:
             logger.warn(f"Failed to clean up OTA directory: {e}")
+
+    def get_required_flash_bytes(self):
+        """
+        Returns estimated flash space required for OTA:
+        update folder + backup folder = 2 × total file size.
+        """
+        return sum(self.sizes.get(f, 0) for f in self.files) * 2

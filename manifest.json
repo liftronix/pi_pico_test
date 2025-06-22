@@ -1,10 +1,25 @@
 {
-  "version": "0.0.45",
+  "version": "0.0.48",
   "files": {
-    "main.py": "4aa1174e0ce9ff6094d16b95770ded4777d3290a5c24099b978bcc92cc80e8ba",
-    "lib/ledblinker.py": "1ceea55f767cf6eaadc7386ae9bed0c626523004813a25be5235390ff206c7cf",
-    "lib/logger.py": "1cc047f4ecb01e72e24510e7d06d89a1995d51e81ca40f0af480cdbe579de911",
-    "lib/ota.py": "ade04ade1027f7e5f262a4775a39c1b3986ac83b4b5b7c8eda7d8b390b9a6b6f",
-    "lib/wifi_manager.py": "eb38aace3ce41b81b1571d24adc0dbe531571922d27c143497d73dceee26dbf1"
+    "main.py": {
+      "sha256": "e17561d0a14921ffe770c0bcf0bf36f997a4214896e725c2497de5ec4648fe13",
+      "size": 5252
+    },
+    "lib/ledblinker.py": {
+      "sha256": "1ceea55f767cf6eaadc7386ae9bed0c626523004813a25be5235390ff206c7cf",
+      "size": 1299
+    },
+    "lib/logger.py": {
+      "sha256": "1cc047f4ecb01e72e24510e7d06d89a1995d51e81ca40f0af480cdbe579de911",
+      "size": 2016
+    },
+    "lib/ota.py": {
+      "sha256": "8703aca74b487267eacbe6550a1b0b0c9203a34c2702d5f7c200717a3537f92c",
+      "size": 8419
+    },
+    "lib/wifi_manager.py": {
+      "sha256": "eb38aace3ce41b81b1571d24adc0dbe531571922d27c143497d73dceee26dbf1",
+      "size": 5175
+    }
   }
 }
