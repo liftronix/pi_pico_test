@@ -16,7 +16,7 @@ class OTAUpdater:
         self.manifest = {}
         self.files = []
         self.hashes = {}
-        self.sizes = {}  # parsed file sizes from manifest
+        self.sizes = {}
         self.remote_version = ""
         self.progress = 0
         self.current_file = ""
@@ -35,7 +35,6 @@ class OTAUpdater:
             return "0.0.0"
 
     async def _ensure_dirs(self, path):
-        # Create all parent directories required to save 'path'
         parts = path.split("/")[:-1]
         current = ""
         for p in parts:
@@ -146,7 +145,7 @@ class OTAUpdater:
             new = f"{self.ota_dir}/{f}"
             await self._ensure_dirs(bkp)
             try:
-                os.stat(src)  # Check if file exists
+                os.stat(src)
                 with open(src, "rb") as r, open(bkp, "wb") as w:
                     w.write(r.read())
                 logger.debug(f"Backed up: {f}")
@@ -170,6 +169,20 @@ class OTAUpdater:
             logger.info(f"Version updated to {self.remote_version}")
         except Exception as e:
             logger.warn(f"Failed to write version file: {e}")
+
+        try:
+            with open(f"{self.ota_dir}/manifest.json", "rb") as src, open("/manifest.json", "wb") as dst:
+                dst.write(src.read())
+            logger.info("📄 manifest.json copied to root after OTA")
+
+            with open("/manifest.json") as f:
+                manifest_version = json.load(f).get("version", "")
+            with open(self.version_file) as f:
+                version_txt = f.read().strip()
+            if manifest_version != version_txt:
+                logger.warn(f"⚠️ Version mismatch: manifest={manifest_version}, version.txt={version_txt}")
+        except Exception as e:
+            logger.warn(f"Could not verify or copy manifest.json: {e}")
 
         try:
             if "ota_pending.flag" in os.listdir("/"):
@@ -214,8 +227,4 @@ class OTAUpdater:
             logger.warn(f"Failed to clean up OTA directory: {e}")
 
     def get_required_flash_bytes(self):
-        """
-        Returns estimated flash space required for OTA:
-        update folder + backup folder = 2 × total file size.
-        """
         return sum(self.sizes.get(f, 0) for f in self.files) * 2
