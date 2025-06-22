@@ -34,6 +34,7 @@ class OTAUpdater:
             return "0.0.0"
 
     async def _ensure_dirs(self, path):
+        # Create all parent directories required to save 'path'
         parts = path.split("/")[:-1]
         current = ""
         for p in parts:
@@ -143,12 +144,12 @@ class OTAUpdater:
             new = f"{self.ota_dir}/{f}"
             await self._ensure_dirs(bkp)
             try:
-                if os.path.exists(src):
-                    with open(src, "rb") as r, open(bkp, "wb") as w:
-                        w.write(r.read())
-                    logger.debug(f"Backed up: {f}")
-                else:
-                    logger.warn(f"Source file missing, skipping backup: {src}")
+                os.stat(src)  # Check if file exists
+                with open(src, "rb") as r, open(bkp, "wb") as w:
+                    w.write(r.read())
+                logger.debug(f"Backed up: {f}")
+            except OSError:
+                logger.warn(f"Source file missing, skipping backup: {src}")
             except Exception as e:
                 logger.warn(f"Could not backup {f}: {e}")
             try:
@@ -168,7 +169,6 @@ class OTAUpdater:
         except Exception as e:
             logger.warn(f"Failed to write version file: {e}")
 
-        # Remove OTA flag BEFORE reboot
         try:
             if "ota_pending.flag" in os.listdir("/"):
                 os.remove("ota_pending.flag")
@@ -190,16 +190,22 @@ class OTAUpdater:
             except Exception as e:
                 logger.error(f"Rollback failed: {f}: {e}")
 
+    def _rmtree(self, path):
+        for item in os.listdir(path):
+            full_path = f"{path}/{item}"
+            try:
+                mode = os.stat(full_path)[0]
+                if mode & 0x4000:
+                    self._rmtree(full_path)
+                    os.rmdir(full_path)
+                else:
+                    os.remove(full_path)
+            except Exception as e:
+                logger.warn(f"Could not remove {full_path}: {e}")
+
     async def cleanup(self):
         try:
-            for f in os.listdir(self.ota_dir):
-                full_path = f"{self.ota_dir}/{f}"
-                try:
-                    mode = os.stat(full_path)[0]
-                    if not (mode & 0x4000):  # Not a directory
-                        os.remove(full_path)
-                except:
-                    pass
+            self._rmtree(self.ota_dir)
             os.rmdir(self.ota_dir)
             logger.info("Cleaned up OTA directory")
         except Exception as e:
