@@ -175,7 +175,7 @@ class OTAUpdater:
             with open(f"{self.ota_dir}/manifest.json") as src:
                 manifest_data = json.load(src)
             with open("/manifest.json", "w") as dst:
-                json.dump(manifest_data, dst, indent=2)
+                dst.write(json.dumps(manifest_data))
             logger.info("📄 manifest.json copied and formatted at root")
 
             # Optional consistency check

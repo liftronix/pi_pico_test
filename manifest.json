@@ -1,5 +1,5 @@
 {
-  "version": "0.0.60",
+  "version": "0.0.62",
   "files": {
     "main.py": {
       "sha256": "3a39b46593b3df2d3cffce72cab134d43c8983ecf64424f4777ed40fab23d992",
@@ -14,8 +14,8 @@
       "size": 2016
     },
     "lib/ota.py": {
-      "sha256": "f6268d18effbe38e21c266bea95ddd83f845f58628ea25285d8a3d5562040068",
-      "size": 8981
+      "sha256": "9e6d9878e5bce2e1a363a298007c83517bd1422028da940b5a062415c1611e76",
+      "size": 8978
     },
     "lib/wifi_manager.py": {
       "sha256": "eb38aace3ce41b81b1571d24adc0dbe531571922d27c143497d73dceee26dbf1",
