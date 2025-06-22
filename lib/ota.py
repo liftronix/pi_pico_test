@@ -171,18 +171,21 @@ class OTAUpdater:
             logger.warn(f"Failed to write version file: {e}")
 
         try:
-            with open(f"{self.ota_dir}/manifest.json", "rb") as src, open("/manifest.json", "wb") as dst:
-                dst.write(src.read())
-            logger.info("📄 manifest.json copied to root after OTA")
+            # Pretty-print manifest.json to /
+            with open(f"{self.ota_dir}/manifest.json") as src:
+                manifest_data = json.load(src)
+            with open("/manifest.json", "w") as dst:
+                json.dump(manifest_data, dst, indent=2)
+            logger.info("📄 manifest.json copied and formatted at root")
 
-            with open("/manifest.json") as f:
-                manifest_version = json.load(f).get("version", "")
-            with open(self.version_file) as f:
+            # Optional consistency check
+            with open("/version.txt") as f:
                 version_txt = f.read().strip()
+            manifest_version = manifest_data.get("version", "")
             if manifest_version != version_txt:
                 logger.warn(f"⚠️ Version mismatch: manifest={manifest_version}, version.txt={version_txt}")
         except Exception as e:
-            logger.warn(f"Could not verify or copy manifest.json: {e}")
+            logger.warn(f"Could not write or verify manifest.json: {e}")
 
         try:
             if "ota_pending.flag" in os.listdir("/"):
