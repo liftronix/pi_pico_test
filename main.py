@@ -126,7 +126,7 @@ async def main():
     asyncio.create_task(monitor())
     asyncio.create_task(check_and_download_ota())
 
-    led_blinker = LEDBlinker(pin_num='LED', interval_ms=200)
+    led_blinker = LEDBlinker(pin_num='LED', interval_ms=2000)
     led_blinker.start()
 
     while True:

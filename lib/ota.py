@@ -34,7 +34,6 @@ class OTAUpdater:
             return "0.0.0"
 
     async def _ensure_dirs(self, path):
-        # Create all parent directories for a given file path
         parts = path.split("/")[:-1]
         current = ""
         for p in parts:
@@ -46,11 +45,9 @@ class OTAUpdater:
                 pass
 
     def _should_normalize(self, file_path):
-        # Only normalize line endings for known text-based files
         return file_path.endswith((".py", ".txt", ".json", ".md"))
 
     def _sha256(self, path):
-        # Compute SHA-256 hash (MicroPython-compatible)
         h = hashlib.sha256()
         with open(path, "rb") as f:
             while True:
@@ -91,24 +88,15 @@ class OTAUpdater:
                 logger.info(f"Downloading: {file} → {url}")
                 r = requests.get(url)
                 content = r.content
-
-                # Normalize line endings only for safe text files
                 if self._should_normalize(file):
                     content = content.replace(b"\r\n", b"\n")
-
                 with open(dest, "wb") as f:
                     f.write(content)
-
                 actual_hash = self._sha256(dest)
                 expected_hash = self.hashes[file]
-
-                logger.debug(f"{file} → AHASH: {actual_hash}")
-                logger.debug(f"{file} → EHASH: {expected_hash}")
-
                 if actual_hash != expected_hash:
                     logger.error(f"Hash mismatch: {file}")
                     return False
-
                 logger.info(f"Downloaded {file} ✓")
                 self.progress = int(((i + 1) / total) * 100)
                 await asyncio.sleep_ms(10)
@@ -159,8 +147,10 @@ class OTAUpdater:
                     with open(src, "rb") as r, open(bkp, "wb") as w:
                         w.write(r.read())
                     logger.debug(f"Backed up: {f}")
-            except:
-                logger.warn(f"Could not backup: {f}")
+                else:
+                    logger.warn(f"Source file missing, skipping backup: {src}")
+            except Exception as e:
+                logger.warn(f"Could not backup {f}: {e}")
             try:
                 await self._ensure_dirs(src)
                 with open(new, "rb") as r, open(src, "wb") as w:
@@ -177,6 +167,14 @@ class OTAUpdater:
             logger.info(f"Version updated to {self.remote_version}")
         except Exception as e:
             logger.warn(f"Failed to write version file: {e}")
+
+        # Remove OTA flag BEFORE reboot
+        try:
+            if "ota_pending.flag" in os.listdir("/"):
+                os.remove("ota_pending.flag")
+                logger.info("🗑 ota_pending.flag removed")
+        except Exception as e:
+            logger.warn(f"Failed to remove ota_pending.flag: {e}")
 
         await self.cleanup()
         return True
@@ -196,8 +194,12 @@ class OTAUpdater:
         try:
             for f in os.listdir(self.ota_dir):
                 full_path = f"{self.ota_dir}/{f}"
-                if os.path.isfile(full_path):
-                    os.remove(full_path)
+                try:
+                    mode = os.stat(full_path)[0]
+                    if not (mode & 0x4000):  # Not a directory
+                        os.remove(full_path)
+                except:
+                    pass
             os.rmdir(self.ota_dir)
             logger.info("Cleaned up OTA directory")
         except Exception as e:
