@@ -4,7 +4,7 @@ import gc
 import os
 import time
 import logger
-from machine import Pin, reset
+from machine import Pin
 from ota import OTAUpdater
 from ledblinker import LEDBlinker
 from wifi_manager import WiFiManager
@@ -101,7 +101,13 @@ async def check_and_download_ota():
             logger.info("🆕 Update available.")
             if has_enough_memory():
                 logger.info("📥 Downloading update before reboot...")
+
+                # 🔄 Start progress monitor
+                progress_task = asyncio.create_task(show_progress(updater))
+
                 if await updater.download_update():
+                    progress_task.cancel()
+                    led.value(1)
                     logger.info("✅ Update downloaded. Preparing to reboot...")
                     with open("/ota_pending.flag", "w") as f:
                         f.write("ready")
@@ -110,6 +116,8 @@ async def check_and_download_ota():
                         await asyncio.sleep(1)
                     machine.reset()
                 else:
+                    progress_task.cancel()
+                    led.value(0)
                     logger.error("❌ Download failed. OTA aborted.")
             else:
                 logger.warn("🚫 Not enough memory for OTA.")
