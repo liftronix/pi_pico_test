@@ -75,17 +75,6 @@ def get_local_version():
     except:
         return "0.0.0"
 
-async def wait_for_internet(timeout=30):
-    logger.info("⏳ Waiting for Wi-Fi + Internet before starting OTA...")
-    for _ in range(timeout):
-        status = wifi.get_status()
-        if status["WiFi"] == "Connected" and status["Internet"] == "Connected":
-            logger.info("✅ Network ready. Starting OTA checks.")
-            return True
-        await asyncio.sleep(1)
-    logger.error("⛔ Network not ready after timeout. Skipping OTA check.")
-    return False
-
 async def show_progress(ota):
     while ota.get_progress() < 100:
         led.toggle()
@@ -169,9 +158,7 @@ async def main():
 
     asyncio.create_task(idle_task())
     asyncio.create_task(monitor())
-
-    if await wait_for_internet():
-        asyncio.create_task(check_and_download_ota())
+    asyncio.create_task(check_and_download_ota())
 
     led_blinker = LEDBlinker(pin_num='LED', interval_ms=2000)
     led_blinker.start()
