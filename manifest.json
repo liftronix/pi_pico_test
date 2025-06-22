@@ -1,9 +1,9 @@
 {
-  "version": "0.0.48",
+  "version": "0.0.50",
   "files": {
     "main.py": {
-      "sha256": "e17561d0a14921ffe770c0bcf0bf36f997a4214896e725c2497de5ec4648fe13",
-      "size": 5252
+      "sha256": "debe4c68770f71d5d22d1fd575dc0a7a50c148e513d83bcbba7e13e6faeb591d",
+      "size": 5562
     },
     "lib/ledblinker.py": {
       "sha256": "1ceea55f767cf6eaadc7386ae9bed0c626523004813a25be5235390ff206c7cf",

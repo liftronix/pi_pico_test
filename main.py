@@ -101,39 +101,43 @@ async def apply_ota_if_pending():
 async def check_and_download_ota():
     updater = OTAUpdater(REPO_URL)
     while True:
-        logger.info("🔍 Checking for OTA update...")
-        if await updater.check_for_update():
-            logger.info("🆕 Update available.")
-            if has_enough_memory():
-                required = updater.get_required_flash_bytes()
-                free = get_free_flash_bytes()
-                logger.debug(f"Flash required: {required + FLASH_BUFFER} | Available: {free}")
-                if free < required + FLASH_BUFFER:
-                    logger.warn("🚫 Not enough flash space for OTA.")
-                else:
-                    logger.info("📥 Downloading update before reboot...")
-
-                    # 🔄 Start progress monitor
-                    progress_task = asyncio.create_task(show_progress(updater))
-
-                    if await updater.download_update():
-                        progress_task.cancel()
-                        led.value(1)
-                        logger.info("✅ Update downloaded. Preparing to reboot...")
-                        with open("/ota_pending.flag", "w") as f:
-                            f.write("ready")
-                        for i in range(10, 0, -1):
-                            print(f"Rebooting in {i} seconds... Press Ctrl+C to cancel.")
-                            await asyncio.sleep(1)
-                        machine.reset()
-                    else:
-                        progress_task.cancel()
-                        led.value(0)
-                        logger.error("❌ Download failed. OTA aborted.")
-            else:
-                logger.warn("🚫 Not enough memory for OTA.")
+        status = wifi.get_status()
+        if not (status["WiFi"] and status["Internet"]):
+            logger.warn("🌐 Skipping OTA check — no Wi-Fi or Internet.")
         else:
-            logger.info("✅ Firmware is up to date.")
+            logger.info("🔍 Checking for OTA update...")
+            if await updater.check_for_update():
+                logger.info("🆕 Update available.")
+                if has_enough_memory():
+                    required = updater.get_required_flash_bytes()
+                    free = get_free_flash_bytes()
+                    logger.debug(f"Flash required: {required + FLASH_BUFFER} | Available: {free}")
+                    if free < required + FLASH_BUFFER:
+                        logger.warn("🚫 Not enough flash space for OTA.")
+                    else:
+                        logger.info("📥 Downloading update before reboot...")
+
+                        # 🔄 Start progress monitor
+                        progress_task = asyncio.create_task(show_progress(updater))
+
+                        if await updater.download_update():
+                            progress_task.cancel()
+                            led.value(1)
+                            logger.info("✅ Update downloaded. Preparing to reboot...")
+                            with open("/ota_pending.flag", "w") as f:
+                                f.write("ready")
+                            for i in range(10, 0, -1):
+                                print(f"Rebooting in {i} seconds... Press Ctrl+C to cancel.")
+                                await asyncio.sleep(1)
+                            machine.reset()
+                        else:
+                            progress_task.cancel()
+                            led.value(0)
+                            logger.error("❌ Download failed. OTA aborted.")
+                else:
+                    logger.warn("🚫 Not enough memory for OTA.")
+            else:
+                logger.info("✅ Firmware is up to date.")
         await asyncio.sleep(60)
 
 # --- Main Entry Point ---
