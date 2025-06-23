@@ -199,6 +199,14 @@ class OTAUpdater:
             logger.warn(f"Failed to remove ota_pending.flag: {e}")
         '''
         await self.cleanup()
+        
+        # Rename flag to indicate commit is pending
+        try:
+            os.rename("ota_pending.flag", "ota_commit_pending.flag")
+            logger.info("📛 Renamed ota_pending.flag → ota_commit_pending.flag")
+        except Exception as e:
+            logger.warn(f"Could not rename ota_pending.flag: {e}")
+        
         return True
 
     async def rollback(self):
