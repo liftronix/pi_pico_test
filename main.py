@@ -82,36 +82,45 @@ async def show_progress(ota):
         await asyncio.sleep(0.4)
     led.value(1)
 
-async def verify_ota_commit(ota):
-    logger.info("🔎 Verifying OTA commit...")
-    for _ in range(12):  # Retry for 60 seconds
-        if await ota.check_for_update():
-            if ota.remote_version == get_local_version():
-                logger.info("✅ OTA commit verified with GitHub.")
-                return True
+async def verify_ota_commit():
+    if "ota_pending.flag" not in os.listdir("/"):
+        return  # Nothing pending
+
+    logger.info("🔎 Verifying OTA commit (commit-pending state detected)...")
+    ota = OTAUpdater(REPO_URL)
+
+    for _ in range(12):  # Wait up to 60 seconds for network/GitHub
+        try:
+            if not await ota.check_for_update():
+                logger.info("✅ OTA commit verified. Remote matches local version.")
+                try:
+                    os.remove("ota_pending.flag")
+                    logger.info("🗑 ota_pending.flag removed after successful commit")
+                except Exception as e:
+                    logger.warn(f"Could not remove ota_pending.flag: {e}")
+                return
+        except Exception as e:
+            logger.warn(f"Commit check attempt failed: {e}")
         await asyncio.sleep(5)
-    logger.error("❌ OTA commit verification failed.")
-    return False
+
+    logger.error("❌ OTA commit verification failed. Initiating rollback...")
+    await ota.rollback()
 
 async def apply_ota_if_pending():
     if "ota_pending.flag" in os.listdir("/"):
-        logger.info("🟡 OTA flag detected — applying update")
+        logger.info("🟡 ota_pending.flag detected — applying OTA update")
         ota = OTAUpdater(REPO_URL)
         if await ota.apply_update():
-            if await verify_ota_commit(ota):
-                logger.info("🚀 OTA committed. Rebooting...")
-                machine.reset()
-            else:
-                logger.error("❌ Rolling back due to failed OTA commit verification.")
-                await ota.rollback()
+            logger.info("🔁 OTA applied successfully. Rebooting into commit verification state...")
+            machine.reset()  # <-- verify_ota_commit will run on next boot
         else:
-            logger.error("⚠️ OTA apply failed. Rolling back.")
+            logger.error("❌ OTA apply failed. Rolling back.")
             await ota.rollback()
-        try:
-            os.remove("ota_pending.flag")
-            logger.info("🗑 ota_pending.flag removed")
-        except:
-            logger.warn("Could not remove ota_pending.flag")
+            try:
+                os.remove("ota_pending.flag")
+                logger.info("🗑 ota_pending.flag removed after failed apply")
+            except:
+                logger.warn("Could not remove ota_pending.flag after failed apply")
 
 async def check_and_download_ota():
     updater = OTAUpdater(REPO_URL)
@@ -155,6 +164,7 @@ async def check_and_download_ota():
 async def main():
     logger.info(f"🧾 Running firmware version: {get_local_version()}")
     await apply_ota_if_pending()
+    await verify_ota_commit()
 
     asyncio.create_task(idle_task())
     asyncio.create_task(monitor())

@@ -188,13 +188,16 @@ class OTAUpdater:
         except Exception as e:
             logger.warn(f"Could not write or verify manifest.json: {e}")
 
+        #In apply_update(), remove the block that deletes ota_pending.flag.
+        #That’s now handled in main.py after commit verification
+        '''
         try:
             if "ota_pending.flag" in os.listdir("/"):
                 os.remove("ota_pending.flag")
                 logger.info("🗑 ota_pending.flag removed")
         except Exception as e:
             logger.warn(f"Failed to remove ota_pending.flag: {e}")
-
+        '''
         await self.cleanup()
         return True
 
@@ -208,6 +211,16 @@ class OTAUpdater:
                 logger.info(f"Rollback: {f}")
             except Exception as e:
                 logger.error(f"Rollback failed: {f}: {e}")
+
+        # Remove ota_pending.flag to prevent retry loop
+        try:
+            if "ota_pending.flag" in os.listdir("/"):
+                os.remove("ota_pending.flag")
+                logger.info("🗑 ota_pending.flag removed after rollback")
+        except Exception as e:
+            logger.warn(f"Could not remove ota_pending.flag during rollback: {e}")
+
+        logger.info("✅ Rollback complete. Previous firmware restored.")
 
     def _rmtree(self, path):
         for item in os.listdir(path):
