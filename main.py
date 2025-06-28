@@ -9,6 +9,11 @@ from ota import OTAUpdater
 from ledblinker import LEDBlinker
 from wifi_manager import WiFiManager
 
+from config_loader import load_config
+config = load_config()
+
+
+
 # --- Config ---
 REPO_URL = "https://raw.githubusercontent.com/liftronix/pi_pico_test/refs/heads/main"
 MIN_FREE_MEM = 100 * 1024
@@ -37,7 +42,9 @@ def blink_led(times=3, delay=150):
         time.sleep_ms(delay)
 
 # --- Wi-Fi Setup ---
-wifi = WiFiManager(ssid="GHOSH_SAP", password="lifeline101")
+wifi = WiFiManager(
+    ssid=config.get("wifi", {}).get("ssid", ""),
+    password=config.get("wifi", {}).get("password", ""))
 wifi.start()
 
 # --- CPU Utilization Monitor ---

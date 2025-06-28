@@ -20,20 +20,29 @@ class OTAUpdater:
         self.remote_version = ""
         self.progress = 0
         self.current_file = ""
-
+        #Files to be excluded during OTA process
+        self.user_excluded = {
+            "config.json",
+            "output_info.txt"
+        }
+    
+    #--------------------------------------------------------------------------#
     def get_progress(self):
         return self.progress
-
+    
+    #--------------------------------------------------------------------------#
     def get_status(self):
         return f"{self.current_file} ({self.progress}%)"
-
+    
+    #--------------------------------------------------------------------------#
     async def _get_local_version(self):
         try:
             with open(self.version_file, "r") as f:
                 return f.read().strip()
         except:
             return "0.0.0"
-
+    
+    #--------------------------------------------------------------------------#
     async def _ensure_dirs(self, path):
         parts = path.split("/")[:-1]
         current = ""
@@ -44,10 +53,12 @@ class OTAUpdater:
                 logger.debug(f"Created directory: {current}")
             except:
                 pass
-
+    
+    #--------------------------------------------------------------------------#
     def _should_normalize(self, file_path):
         return file_path.endswith((".py", ".txt", ".json", ".md"))
 
+    #--------------------------------------------------------------------------#
     def _sha256(self, path):
         h = hashlib.sha256()
         with open(path, "rb") as f:
@@ -57,7 +68,8 @@ class OTAUpdater:
                     break
                 h.update(chunk)
         return binascii.hexlify(h.digest()).decode()
-
+    
+    #--------------------------------------------------------------------------#
     async def check_for_update(self):
         try:
             r = requests.get(self.manifest_url)
@@ -73,7 +85,8 @@ class OTAUpdater:
         except Exception as e:
             logger.error(f"OTA: Failed to fetch manifest: {e}")
             return False
-
+    
+    #--------------------------------------------------------------------------#
     async def download_update(self):
         try:
             os.mkdir(self.ota_dir)
@@ -117,7 +130,8 @@ class OTAUpdater:
             return False
 
         return True
-
+    
+    #--------------------------------------------------------------------------#
     async def apply_update(self):
         try:
             with open(f"{self.ota_dir}/manifest.json") as f:
@@ -141,6 +155,9 @@ class OTAUpdater:
             logger.debug(f"Backup directory already exists: {self.backup_dir}")
 
         for f in self.files:
+            if f in self.user_excluded:
+                logger.info(f"⚠️ Skipping OTA apply for user-preserved file: {f}")
+                continue
             src = f"/{f}"
             bkp = f"{self.backup_dir}/{f}"
             new = f"{self.ota_dir}/{f}"
@@ -172,14 +189,11 @@ class OTAUpdater:
             logger.warn(f"Failed to write version file: {e}")
 
         try:
-            # Pretty-print manifest.json to /
             with open(f"{self.ota_dir}/manifest.json") as src:
                 manifest_data = json.load(src)
             with open("/manifest.json", "w") as dst:
                 dst.write(json.dumps(manifest_data))
             logger.info("📄 manifest.json copied and formatted at root")
-
-            # Optional consistency check
             with open("/version.txt") as f:
                 version_txt = f.read().strip()
             manifest_version = manifest_data.get("version", "")
@@ -188,29 +202,22 @@ class OTAUpdater:
         except Exception as e:
             logger.warn(f"Could not write or verify manifest.json: {e}")
 
-        #In apply_update(), remove the block that deletes ota_pending.flag.
-        #That’s now handled in main.py after commit verification
-        '''
-        try:
-            if "ota_pending.flag" in os.listdir("/"):
-                os.remove("ota_pending.flag")
-                logger.info("🗑 ota_pending.flag removed")
-        except Exception as e:
-            logger.warn(f"Failed to remove ota_pending.flag: {e}")
-        '''
         await self.cleanup()
-        
-        # Rename flag to indicate commit is pending
+
         try:
             os.rename("ota_pending.flag", "ota_commit_pending.flag")
             logger.info("📛 Renamed ota_pending.flag → ota_commit_pending.flag")
         except Exception as e:
             logger.warn(f"Could not rename ota_pending.flag: {e}")
-        
-        return True
 
+        return True
+    
+    #--------------------------------------------------------------------------#
     async def rollback(self):
         for f in self.files:
+            if f in self.user_excluded:
+                logger.info(f"⚠️ Skipping rollback for user-preserved file: {f}")
+                continue
             bkp = f"{self.backup_dir}/{f}"
             dst = f"/{f}"
             try:
@@ -220,7 +227,6 @@ class OTAUpdater:
             except Exception as e:
                 logger.error(f"Rollback failed: {f}: {e}")
 
-        # Remove ota_pending.flag to prevent retry loop
         try:
             if "ota_pending.flag" in os.listdir("/"):
                 os.remove("ota_pending.flag")
@@ -229,7 +235,8 @@ class OTAUpdater:
             logger.warn(f"Could not remove ota_pending.flag during rollback: {e}")
 
         logger.info("✅ Rollback complete. Previous firmware restored.")
-
+    
+    #--------------------------------------------------------------------------#
     def _rmtree(self, path):
         for item in os.listdir(path):
             full_path = f"{path}/{item}"
@@ -242,7 +249,8 @@ class OTAUpdater:
                     os.remove(full_path)
             except Exception as e:
                 logger.warn(f"Could not remove {full_path}: {e}")
-
+                
+    #--------------------------------------------------------------------------#
     async def cleanup(self):
         try:
             self._rmtree(self.ota_dir)
@@ -250,6 +258,7 @@ class OTAUpdater:
             logger.info("Cleaned up OTA directory")
         except Exception as e:
             logger.warn(f"Failed to clean up OTA directory: {e}")
-
+            
+    #--------------------------------------------------------------------------#
     def get_required_flash_bytes(self):
         return sum(self.sizes.get(f, 0) for f in self.files) * 2
